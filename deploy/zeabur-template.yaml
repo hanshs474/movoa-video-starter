@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://schema.zeabur.app/template.json
+apiVersion: zeabur.com/v1
+kind: Template
+metadata:
+  name: AI Video Generator with Sound (Movoa)
+spec:
+  description: One-page text to video and photo to video app with sound on the Movoa API, zero dependencies
+  icon: https://movoa.ai/logo.png
+  tags:
+    - AI
+    - Tool
+  readme: |
+    # AI Video Generator with Sound
+
+    Unlimited AI video generator with sound: on paid plans the tenth take of a shot costs what the first did, and your first clip is free to make right now. This template deploys a one-page web app on the API of [Movoa](https://movoa.ai/?utm_source=zeabur&utm_medium=template): type a prompt (including what we hear), optionally paste a first-frame photo URL, pick aspect ratio, length and resolution, and get the clip back with its soundtrack in a few minutes. One Node file, no npm dependencies.
+
+    It does [text to video](https://movoa.ai/video/text-to-video) and [photo to video](https://movoa.ai/video/photo-to-video), on [MiniMax H3](https://movoa.ai/video/minimax-h3) by default; set `MOVOA_MODEL` for Seedance 2.5, Veo 3.1 Fast or Seedance 2.0. Create an API key at [movoa.ai/settings/apikeys](https://movoa.ai/settings/apikeys) and enter it as `MOVOA_API_KEY`; runs cost credits on that account, at the prices on [movoa.ai/pricing](https://movoa.ai/pricing). Set `ACCESS_PASSWORD` too, so only people you tell can spend them. Source: [github.com/hanshs474/movoa-video-starter](https://github.com/hanshs474/movoa-video-starter).
+  variables:
+    - key: MOVOA_API_KEY
+      type: STRING
+      name: Movoa API key
+      description: Create one at https://movoa.ai/settings/apikeys
+    - key: ACCESS_PASSWORD
+      type: STRING
+      name: Access password
+      description: Visitors must enter this before generating, so strangers cannot spend your credits
+    - key: PUBLIC_DOMAIN
+      type: DOMAIN
+      name: Domain
+      description: Domain for the web page
+  services:
+    - name: movoa-video-starter
+      icon: https://movoa.ai/logo.png
+      template: PREBUILT_V2
+      spec:
+        source:
+          image: san8888/movoa-video-starter:latest
+        ports:
+          - id: web
+            port: 3000
+            type: HTTP
+        env:
+          MOVOA_API_KEY:
+            default: ${MOVOA_API_KEY}
+          ACCESS_PASSWORD:
+            default: ${ACCESS_PASSWORD}
+          PORT:
+            default: "3000"
+      domainKey: PUBLIC_DOMAIN

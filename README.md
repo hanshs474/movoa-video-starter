@@ -8,7 +8,7 @@ The default model is [MiniMax H3](https://movoa.ai/video/minimax-h3); set `MOVOA
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fhanshs474%2Fmovoa-video-starter&env=MOVOA_API_KEY,ACCESS_PASSWORD)
 
-Or with Docker: `docker build -t movoa-video-starter . && docker run -p 3000:3000 -e MOVOA_API_KEY=sk-... movoa-video-starter`.
+Or run the prebuilt image: `docker run -p 3000:3000 -e MOVOA_API_KEY=sk-... san8888/movoa-video-starter` (amd64 and arm64).
 
 ## Run it
 

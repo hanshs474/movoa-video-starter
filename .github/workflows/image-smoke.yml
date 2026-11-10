@@ -1,0 +1,18 @@
+name: image smoke test
+on: [push, workflow_dispatch]
+jobs:
+  smoke:
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Pull and start the published image
+        run: |
+          docker run -d --name app -p 3000:3000 -e MOVOA_API_KEY=sk-wrong-key-for-smoke-test san8888/movoa-video-starter:1.0.0
+          for i in $(seq 1 20); do curl -fs http://127.0.0.1:3000/health && break; sleep 1; done
+      - name: Page, health check and the API error path
+        run: |
+          curl -fs http://127.0.0.1:3000/ | grep -q "AI Video Generator with Sound"
+          curl -s -X POST http://127.0.0.1:3000/api/generate -H 'content-type: application/json' -d '{"prompt":"smoke test"}' | tee out.json
+          grep -q "rejected MOVOA_API_KEY" out.json
