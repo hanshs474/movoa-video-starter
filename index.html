@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Video Generator with Sound</title>
+<style>
+  :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+  body { margin: 0; background: #0f0e0c; color: #ece8e1; display: grid; place-items: start center; min-height: 100vh; }
+  main { width: min(720px, 92vw); padding: 48px 0; }
+  h1 { font-size: 28px; margin: 0 0 6px; }
+  p.sub { color: #a49d92; margin: 0 0 24px; }
+  textarea, input { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 10px; border: 1px solid #34302a; background: #1a1815; color: inherit; font: inherit; }
+  textarea { min-height: 96px; resize: vertical; }
+  input { margin-top: 10px; }
+  .row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .seg button, button.go { border: 1px solid #34302a; background: #1a1815; color: inherit; border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer; }
+  .seg button[aria-pressed="true"] { border-color: #e3a35a; color: #fff; }
+  button.go { margin-left: auto; background: #d9822b; border-color: #d9822b; color: #fff; font-weight: 600; }
+  button.go:disabled { opacity: .6; cursor: wait; }
+  #out video { width: 100%; border-radius: 12px; display: block; margin-top: 24px; }
+  #msg { color: #a49d92; margin-top: 16px; min-height: 1.4em; }
+  footer { margin-top: 40px; color: #7a7368; font-size: 14px; }
+  footer a { color: #a49d92; }
+</style>
+</head>
+<body>
+<main>
+  <h1>AI Video Generator with Sound</h1>
+  <p class="sub">Describe a shot, including what we hear, and get the clip back with its soundtrack in a few minutes.</p>
+  <textarea id="prompt">a paper lantern drifting over a night river, low angle, slow push-in, water lapping softly and distant wind chimes</textarea>
+  <input id="image" placeholder="Optional: https URL of a photo to use as the first frame">
+  <div class="row">
+    <div class="seg" data-k="aspectRatio" role="group" aria-label="Aspect ratio">
+      <button type="button" data-v="16:9" aria-pressed="true">16:9</button>
+      <button type="button" data-v="9:16" aria-pressed="false">9:16</button>
+      <button type="button" data-v="1:1" aria-pressed="false">1:1</button>
+    </div>
+    <div class="seg" data-k="duration" role="group" aria-label="Length">
+      <button type="button" data-v="6" aria-pressed="true">6s</button>
+      <button type="button" data-v="10" aria-pressed="false">10s</button>
+    </div>
+    <div class="seg" data-k="resolution" role="group" aria-label="Resolution">
+      <button type="button" data-v="480p" aria-pressed="true">480p</button>
+      <button type="button" data-v="768p" aria-pressed="false">768p</button>
+    </div>
+    <button class="go" id="go">Generate</button>
+  </div>
+  <div id="msg"></div>
+  <div id="out"></div>
+  <footer>Clips with sound are made with the <a href="https://movoa.ai/video/text-to-video">text to video</a> API from <a href="https://movoa.ai/?utm_source=starter&utm_medium=template">Movoa</a>.</footer>
+</main>
+<script>
+  const pick = { aspectRatio: '16:9', duration: '6', resolution: '480p' };
+  document.querySelectorAll('.seg').forEach((g) => g.querySelectorAll('button').forEach((b) => b.onclick = () => {
+    pick[g.dataset.k] = b.dataset.v;
+    g.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+  const headers = () => ({ 'content-type': 'application/json', 'x-access-password': localStorage.getItem('pw') || '' });
+  async function call(url, init) {
+    let r = await fetch(url, { ...init, headers: headers() });
+    if (r.status === 401) {
+      localStorage.setItem('pw', prompt('Access password for this page') || '');
+      r = await fetch(url, { ...init, headers: headers() });
+    }
+    return r.json();
+  }
+  const msg = document.getElementById('msg'), out = document.getElementById('out'), go = document.getElementById('go');
+  go.onclick = async () => {
+    go.disabled = true; out.innerHTML = ''; msg.textContent = 'Submitting…';
+    try {
+      const s = await call('/api/generate', { method: 'POST', body: JSON.stringify({
+        prompt: document.getElementById('prompt').value, image: document.getElementById('image').value.trim(), ...pick }) });
+      if (s.error) throw new Error(s.error);
+      const t0 = Date.now();
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 10000));
+        const st = await call('/api/status?id=' + encodeURIComponent(s.id));
+        if (st.error) throw new Error(st.error);
+        if (st.done) {
+          const v = document.createElement('video');
+          Object.assign(v, { src: st.url, controls: true, autoplay: true, loop: true, playsInline: true });
+          out.replaceChildren(v); msg.textContent = ''; break;
+        }
+        const secs = Math.round((Date.now() - t0) / 1000);
+        msg.textContent = st.queueEta ? `In line, about ${Math.ceil(st.queueEta / 60)} min… (${secs}s)` : `Rendering with sound… ${secs}s`;
+        if (Date.now() - t0 > 30 * 60 * 1000) throw new Error('Still rendering after 30 minutes. The clip will appear in your Movoa library.');
+      }
+    } catch (e) { msg.textContent = e.message; }
+    go.disabled = false;
+  };
+</script>
+</body>
+</html>
